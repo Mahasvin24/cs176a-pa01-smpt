@@ -19,8 +19,7 @@ body = sys.stdin.read()
 
 # Establish a TCP connection with the SMTP server.
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s = s.connect((host, port))
-
+s.connect((host, port))
 
 # Read greeting from the server.
 data = s.recv(BUFFER_SIZE)
@@ -45,7 +44,7 @@ if not response.startswith('250'):
     raise Exception('250 reply not received from server.')
 
 # Send RCPT TO command.
-s.send(f'RSPT TO: <{to_addr}>\r\n'.encode())
+s.send(f'RCPT TO: <{to_addr}>\r\n'.encode())
 response = s.recv(BUFFER_SIZE).decode('utf-8')
 if not response.startswith('250'):
     raise Exception('250 reply not received from server.')
@@ -53,14 +52,14 @@ if not response.startswith('250'):
 # Send DATA command.
 s.send('DATA\r\n'.encode())
 response = s.recv(BUFFER_SIZE).decode('utf-8')
-if not response.startswith('250'):
-    raise Exception('250 reply not received from server.')
+if not response.startswith('354'):
+    raise Exception('354 reply not received from server.')
 
 # Send message headers and body.
-s.send(f'Subject: {subject}\n{body}\r\n'.encode())
-response = s.recv(BUFFER_SIZE).decode('utf-8')
-if not response.startswith('250'):
-    raise Exception('250 reply not received from server.')
+s.send(f'Subject: {subject}\r\n'.encode())
+s.send('\r\n'.encode()) 
+s.send(body.replace('\n', '\r\n').encode()) # possibly needs .replace('\n', '\r\n')
+s.send('\r\n'.encode())
 
 # End message with a line containing only a period.
 s.send(f'.\r\n'.encode())
@@ -71,8 +70,8 @@ if not response.startswith('250'):
 # Send QUIT command.
 s.send(f'QUIT\r\n'.encode())
 response = s.recv(BUFFER_SIZE).decode('utf-8')
-if not response.startswith('250'):
-    raise Exception('250 reply not received from server.')
+if not response.startswith('221'):
+    raise Exception('221 reply not received from server.')
 
 # Close the socket when finished.
 s.close()
