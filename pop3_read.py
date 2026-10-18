@@ -14,19 +14,26 @@ port     = int(sys.argv[2])
 username = sys.argv[3]
 
 # Establish a TCP connection with the POP3 server.
-
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect((host, port))
 
 # Read greeting from the server.
 data = s.recv(BUFFER_SIZE)
 response = data.decode('utf-8')
-
 if not response.startswith('+OK'):
     raise Exception('+OK not received from server.')
 
 # Note: the POP3 spec requires every command to end with \r\n, not just \n.
 
 # Log in with USER and PASS commands.
-
+s.send(f'USER {username}\r\n'.encode())
+response = s.recv(BUFFER_SIZE).decode('utf-8')
+if not response.startswith('+OK'):
+    raise Exception('+OK not received from server.')
+s.send('PASS password\r\n'.encode())
+response = s.recv(BUFFER_SIZE).decode('utf-8')
+if not response.startswith('+OK'):
+    raise Exception('+OK not received from server.')
 
 # Get the number of messages with the LIST command.
 # Note: the LIST response spans multiple lines and ends with a line
@@ -35,11 +42,36 @@ if not response.startswith('+OK'):
 # may arrive in a single recv() or be split across several. Accumulate data
 # until you have seen the terminator.
 
+s.send('LIST\r\n'.encode())
+response = ''
+while '\r\n.\r\n' not in response:
+    response_slice = s.recv(BUFFER_SIZE)
+    if not response_slice:
+        raise Exception('Unexpected error.')
+    response += response_slice.decode('utf-8')
+if not response.startswith('+OK'):
+    raise Exception('+OK not received from server.')
 
 # Retrieve and print each message with the RETR command.
 # The same caveat about multi-line responses applies here.
 # Print messages separated by a line containing only '---'.
-
+n = int(response.split('\r\n')[0].split()[1])
+for i in range(1, n + 1):
+    s.send(f'RETR {i}\r\n'.encode())
+    response = ''
+    while '\r\n.\r\n' not in response:
+        response_slice = s.recv(BUFFER_SIZE)
+        if not response_slice:
+            raise Exception('Unexpected error.')
+        response += response_slice.decode('utf-8')
+    if not response.startswith('+OK'):
+        raise Exception('+OK not received from server.')
+    
+    # print
+    response = response.split('\r\n', 1)[1]
+    response = response.rsplit('\r\n.\r\n', 1)[0]
+    print(response)
+    print('---')
 
 # Close the socket when finished.
 s.close()
