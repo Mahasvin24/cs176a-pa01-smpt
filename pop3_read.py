@@ -55,7 +55,7 @@ if not response.startswith('+OK'):
 # Retrieve and print each message with the RETR command.
 # The same caveat about multi-line responses applies here.
 # Print messages separated by a line containing only '---'.
-n = int(response.split('\r\n')[0].split()[1])
+n = len(response.split('\r\n')) - 3
 for i in range(1, n + 1):
     s.send(f'RETR {i}\r\n'.encode())
     response = ''
